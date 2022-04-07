@@ -30,7 +30,7 @@ if($action == "model2") {
   if(isset($result["percentile"])) {
     $output["percentile"] = intval($result["percentile"]);
   }
-
+  
   if(count($output["vec"]) > 0) {
     echo(json_encode($output));
   }
@@ -57,9 +57,9 @@ if($action == "nearby") {
 
   $output = array();
 
-	while($row = $result->fetchArray()) {
+  while($row = $result->fetchArray()) {
     array_push($output, $row[0]);
   }
    
-	echo(json_encode($output));
+  echo(json_encode($output));
 }
