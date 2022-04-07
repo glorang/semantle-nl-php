@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Semantle</title>
+    <script src="assets/js/secretWords.js?2"></script>
+    <script src="assets/js/clipboard.js"></script>
+    <link rel="stylesheet" href="assets/styles.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="manifest" href="assets/site.webmanifest">
+    <!--
+
+    Copyright (c) 2022, David Turner <novalis@novalis.org>
+    Copyright (c) 2022, Geert Lorang
+
+     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3.
+
+    This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+  </head>
+  <body>
+    <!-- place this script after body so it can reference it -->
+    <script src="assets/js/semantle.js"></script>
+    <header>
+      <h2>Semantle</h2>
+      <nav id="menu">
+        <button id="rules-button" aria-label="Rules">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+          </svg>          
+        </button>
+        <button id="settings-button" aria-label="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+          </svg>          
+        </button>
+      </nav>
+    </header>
+    <div class="dialog-underlay" id="rules-underlay">
+      <div class="dialog" id="rules" aria-labelledby="rules-heading" aria-modal="true" role="dialog">
+        <button class="dialog-close" id="rules-close" aria-label="Close">&times;</button>
+        <div class="dialog-content" id="rules-content">
+          <h3 id="rules-heading">Raad het <i>geheime</i> woord</h3>
+          <p>
+						In dit spel ga je op zoek naar het <i>geheime</i> woord. 
+						Dat doe je door willekeurige woorden, van een onbepaald aantal letters, in te geven. 
+						Het spel zal je per ingegeven woord vertellen in welke mate dat woord in semantisch opzicht gelijk is aan het <i>geheime</i> woord.
+						Het spel doet dat door per woord een score tussen 100 en (in theorie) -100 weer te geven. Hoe hoger de score hoe dichter je bij het <i>geheime</i> woord zit.
+						Wanneer je een score van 100 bereikt, heb je het <i>geheime</i> woord gevonden en heb je het spel gewonnen.
+          </p>
+          <p>
+						Daarnaast heb je ook de "Getting close"-indicator die aangeeft in welke mate je het <i>geheime</i> woord nadert.
+						Als je woord binnen de top 1000 valt van gelijkaardige woorden wordt de rankschikking van dat woord weergegeven. 1000 is het <i>geheime</i> woord zelf.
+          </p>
+          <p>
+            Er is slechts 1 opgave per dag. Het nieuwe raadsel is beschikbaar vanaf
+            <span id="localtime"></span>. <span id="yesterday"></span>
+          </p>
+        </div>
+      </div>
+    </div>
+    <p id="similarity-story"> </p>
+    <div id="error" aria-live="assertive"></div>
+    <form id="form" autocorrect="off" autocapitalize="none"
+          autocomplete="off">
+      <div id="guess-wrapper">
+        <input placeholder="Woord" autocorrect="off" autocapitalize="none"
+        autocomplete="off"
+        type="text" id="guess">
+        <input type="submit" value="OK" id="guess-btn">
+      </div>
+    </form>
+    <div id="response" aria-live="assertive"></div>
+    <div style="display:none">
+      <input type="text" id="share" />
+    </div>
+    <table aria-live="polite" id="guesses" role="log">
+    </table>
+
+  <input type="button" value="Opgeven" id="give-up-btn">
+
+  <footer>
+    <div>Made by Geert Lorang - Based on <a href="https://semantle.novalis.org/">Semantle</a> by <a href="mailto:novalis@novalis.org">David Turner</a>. Word2vec data from <a href="https://github.com/coosto/dutch-word-embeddings">Coosto</a>.</div>
+  </footer>
+
+  <div class="dialog-underlay" id="settings-underlay">
+    <div class="dialog" id="settings" aria-labelledby="settings-heading" aria-modal="true" role="dialog">
+      <button class="dialog-close" id="settings-close" aria-label="Close">&times;</button>
+      <div class="dialog-content" id="settings-content">
+        <div>
+          <input type="checkbox" name="dark-mode" value="dark-mode" id="dark-mode" />
+          <label for="dark-mode">Dark mode</label>
+        </div>
+        <div>
+          <input type="checkbox" name="lower" value="lower" id="lower" />
+          <label for="lower">Treat all input as lowercase</label>  (<a id="capitalized-link" href="#capitalized-faq">see FAQ</a>)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <template id="x-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+    </svg>
+  </template>
+
+  </body>
+</html>

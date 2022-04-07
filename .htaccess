@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^model/(.+)$        rest.php?action=model&param=$1 [L]
+RewriteRule ^model2/(.+)/(.+)$  rest.php?action=model2&secret=$1&param=$2 [L]
+RewriteRule ^similarity/(.+)$   rest.php?action=similarity&param=$1 [L]
+RewriteRule ^nearby/(.+)$       rest.php?action=nearby&param=$1 [L]
+RewriteRule ^nearby_1k/(.+)$    top1k.php?param=$1 [L]
