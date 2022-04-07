@@ -11,11 +11,11 @@ $secret = (isset($_GET["secret"])) ? preg_replace("/[^-a-zA-Z0-9_]/", "", $_GET[
 $sqlitedb = "../word2vec/word2vec.db";
 
 if($action == "model2") {
-	$db = new SQLite3($sqlitedb);
-	$sql = $db->prepare("SELECT vec, percentile FROM word2vec LEFT OUTER JOIN nearby ON nearby.word = :secret AND nearby.neighbor = :word WHERE word2vec.word = :word");
-	$sql->bindValue(":word", $param, SQLITE3_TEXT);
-	$sql->bindValue(":secret", $secret, SQLITE3_TEXT);
-	$result = $sql->execute()->fetchArray();
+  $db = new SQLite3($sqlitedb);
+  $sql = $db->prepare("SELECT vec, percentile FROM word2vec LEFT OUTER JOIN nearby ON nearby.word = :secret AND nearby.neighbor = :word WHERE word2vec.word = :word");
+  $sql->bindValue(":word", $param, SQLITE3_TEXT);
+  $sql->bindValue(":secret", $secret, SQLITE3_TEXT);
+  $result = $sql->execute()->fetchArray();
 
   $output["vec"] = array();
 
@@ -37,10 +37,10 @@ if($action == "model2") {
 }
 
 if($action == "similarity") {
-	$db = new SQLite3($sqlitedb);
-	$sql = $db->prepare("SELECT top, top10, rest FROM similarity_range WHERE word = :word");
-	$sql->bindValue(":word", $param, SQLITE3_TEXT);
-	$result = $sql->execute()->fetchArray();
+  $db = new SQLite3($sqlitedb);
+  $sql = $db->prepare("SELECT top, top10, rest FROM similarity_range WHERE word = :word");
+  $sql->bindValue(":word", $param, SQLITE3_TEXT);
+  $result = $sql->execute()->fetchArray();
 
   $output["top"] = $result["top"];
   $output["top10"] = $result["top10"];
@@ -50,9 +50,9 @@ if($action == "similarity") {
 }
 
 if($action == "nearby") {
-	$db = new SQLite3($sqlitedb);
-	$sql = $db->prepare("SELECT neighbor FROM nearby WHERE word = :word ORDER BY percentile DESC LIMIT 10 OFFSET 1");
-	$sql->bindValue(":word", $param, SQLITE3_TEXT);
+  $db = new SQLite3($sqlitedb);
+  $sql = $db->prepare("SELECT neighbor FROM nearby WHERE word = :word ORDER BY percentile DESC LIMIT 10 OFFSET 1");
+  $sql->bindValue(":word", $param, SQLITE3_TEXT);
   $result = $sql->execute();
 
   $output = array();
