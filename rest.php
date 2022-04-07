@@ -46,7 +46,7 @@ if($action == "similarity") {
   $output["top10"] = $result["top10"];
   $output["rest"] = $result["rest"];
   
-	echo(json_encode($output));
+  echo(json_encode($output));
 }
 
 if($action == "nearby") {
