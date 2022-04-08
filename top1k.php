@@ -20,7 +20,7 @@ $result = $sql->execute();
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="/assets/js/secretWords.js"></script>
+    <script src="/assets/js/secretWords.js?v=3"></script>
     <script src="/assets/js/nearest1k.js"></script>
     <title>Semantle: nearest words</title>
   </head>
