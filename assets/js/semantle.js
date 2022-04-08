@@ -91,7 +91,7 @@ function share() {
     const copied = ClipboardJS.copy(text);
 
     if (copied) {
-        alert("Naar klembord gekopierd");
+        alert("Naar klembord gekopieerd");
     }
     else {
         alert("Naar klembord kopieren mislukt");
