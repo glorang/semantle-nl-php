@@ -10,7 +10,7 @@ The initial game uses a Flask based Python webserver to host the game (semantle.
 
 Therefore I've ported the server part to a simple PHP version.
 
-The PHP version is a drop-in replacement for David's semantle.py, all you need is a webserver with PHP and php-sqlite3 installed.
+The PHP version is a drop-in replacement for David's semantle.py, all you need is an Apache webserver with libapache2-mod-php and php-sqlite3 installed.
 
 ## Installation
 
