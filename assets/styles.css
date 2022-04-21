@@ -122,6 +122,11 @@ h2 {
     padding: .5em;
 }
 
+#hint-btn {
+    height: 2.5em;
+    padding: .5em;
+}
+
 #guesses {
     margin-bottom:40px;
 }

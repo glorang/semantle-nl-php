@@ -6,6 +6,7 @@ header("Content-Type: application/json; charset=utf-8");
 $action = (isset($_GET["action"])) ? preg_replace("/[^-a-zA-Z0-9_]/", "", $_GET["action"]) : "";
 $param = (isset($_GET["param"])) ? preg_replace("/[^-a-zA-Z0-9_]/", "", $_GET["param"]) : "";
 $secret = (isset($_GET["secret"])) ? preg_replace("/[^-a-zA-Z0-9_]/", "", $_GET["secret"]) : "";
+$percentile = (isset($_GET["percentile"])) ? preg_replace("/[^0-9]/", "", $_GET["percentile"]) : "";
 
 // SQLite database
 $sqlitedb = "../word2vec/word2vec.db";
@@ -62,4 +63,14 @@ if($action == "nearby") {
   }
    
   echo(json_encode($output));
+}
+
+if($action == "nth_nearby") {
+  $db = new SQLite3($sqlitedb);
+  $sql = $db->prepare("SELECT neighbor FROM nearby WHERE word = :word AND percentile = :percentile LIMIT 1");
+  $sql->bindValue(":word", $param, SQLITE3_TEXT);
+  $sql->bindValue(":percentile", $percentile, SQLITE3_INTEGER);
+  $result = $sql->execute()->fetchArray();
+
+  echo(json_encode($result[0]));
 }

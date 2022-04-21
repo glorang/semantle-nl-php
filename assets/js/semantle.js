@@ -10,6 +10,16 @@
 */
 'use strict';
 
+const now = Date.now();
+const today = Math.floor(now / 86400000);
+const initialDay = 19021;
+function getPuzzleNumber(day) {
+    return (day - initialDay) % secretWords.length;
+}
+function getSecretWord(day) {
+    return secretWords[getPuzzleNumber(day)];
+}
+
 let gameOver = false;
 let firstGuess = true;
 let guesses = [];
@@ -17,16 +27,15 @@ let latestGuess = undefined;
 let guessed = new Set();
 let guessCount = 0;
 let model = null;
-const now = Date.now();
-const today = Math.floor(now / 86400000);
-const initialDay = 19021;
-const puzzleNumber = (today - initialDay) % secretWords.length;
-const handleStats = puzzleNumber >= 24;
-const yesterdayPuzzleNumber = (today - initialDay + secretWords.length - 1) % secretWords.length;
-const storage = window.localStorage;
+const puzzleNumber = getPuzzleNumber(today);
+let handleStats = puzzleNumber >= 24;
+const yesterdayPuzzleNumber = getPuzzleNumber(today - 1);
+let puzzleKey;
+let storage;
 let caps = 0;
 let warnedCaps = 0;
 let chrono_forward = 1;
+let hints_used = 0;
 let darkModeMql = window.matchMedia('(prefers-color-scheme: dark)');
 let darkMode = false;
 
@@ -87,7 +96,10 @@ function project_along(v1, v2, t) {
 function share() {
     // We use the stored guesses here, because those are not updated again
     // once you win -- we don't want to include post-win guesses here.
-    const text = solveStory(JSON.parse(storage.getItem("guesses")), puzzleNumber);
+    const text = solveStory(JSON.parse(storage.getItem("guesses")),
+                            puzzleNumber,
+                            parseInt(storage.getItem("winState")),
+                            hints_used);
     const copied = ClipboardJS.copy(text);
 
     if (copied) {
@@ -103,6 +115,7 @@ const cache = {};
 let secret = "";
 let secretVec = null;
 let similarityStory = null;
+let customMode = false;
 
 function select(word, secretVec) {
     /*
@@ -167,17 +180,34 @@ function updateLocalTime() {
     const now = new Date();
     now.setUTCHours(24, 0, 0, 0);
 
-    $('#localtime').innerHTML = `${now.getHours()}:00 's nachts`;
+    const localtime = `or ${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")} jouw tijd`;
+    $('#localtime').innerHTML = localtime;
+    //$('#localtime2').innerHTML = localtime;
 }
 
-function solveStory(guesses, puzzleNumber) {
+function plural(count, word) {
+    if (count === 1) {
+        return word;
+    }
+
+    return word + "s";
+}
+
+
+function solveStory(guesses, puzzleNumber, won, hints_used) {
     const guess_count = guesses.length;
-    if (guess_count == 0) {
+    if (guess_count === 0) {
         return `Ik heb Semantle ${puzzleNumber} opgegeven zonder te raden.`;
     }
 
-    if (guess_count == 1) {
-        return `Ik heb Semantle ${puzzleNumber} opgelost na de eerste gok!`;
+    let guesses_less_hints = guess_count - hints_used;
+
+    if (guess_count === 1) {
+        if (won) {
+            return `Ik heb Semantle ${puzzleNumber} opgelost na mijn eerste gok!`;
+        } else {
+            return `Ik heb Semantle ${puzzleNumber} opgegeven na mijn eerste gok!`;
+        }
     }
 
     let describe = function(similarity, percentile) {
@@ -186,10 +216,10 @@ function solveStory(guesses, puzzleNumber) {
             out += ` (${percentile}/1000)`;
         }
         return out;
-    }
+    };
 
     const guesses_chrono = guesses.slice();
-    guesses_chrono.sort(function(a, b){return a[3]-b[3]});
+    guesses_chrono.sort(function(a, b){return a[3]-b[3];});
 
     let [similarity, old_guess, percentile, guess_number] = guesses_chrono[0];
     let first_guess = `Mijn eerste gok ${describe(similarity, percentile)}.`;
@@ -206,11 +236,34 @@ function solveStory(guesses, puzzleNumber) {
         }
     }
 
-    const penultimate_guess = guesses_chrono[guesses_chrono.length - 2];
-    [similarity, old_guess, percentile, guess_number] = penultimate_guess;
-    const penultimate_guess_msg = `Mijn voorlaatste gok ${describe(similarity, percentile)}.`;
+    let last_guess_msg;
+    if (won) {
+        const penultimate_guess = guesses_chrono[guesses_chrono.length - 2];
+        [similarity, old_guess, percentile, guess_number] = penultimate_guess;
+        last_guess_msg = `Mijn voorlaatste gok ${describe(similarity, percentile)}.`;
+    } else {
+        const last_guess = guesses_chrono[guesses_chrono.length - 1];
+        [similarity, old_guess, percentile, guess_number] = last_guess;
+        last_guess_msg = `Mijn laatste gok ${describe(similarity, percentile)}.`;
+    }
 
-    return `Ik heb Semantle #${puzzleNumber} gevonden in ${guess_count} gokken. ${first_guess}${first_hit}${penultimate_guess_msg} https://semantle.be`;
+    let hints = "";
+    if (hints_used > 0)  {
+        hints = ` met ${hints_used} ${plural(hints_used, "hint")}`;
+    }
+
+    const solved = won ? "gevonden in" : "opgegeven na";
+    return `Ik heb Semantle #${puzzleNumber} ${solved} ${guesses_less_hints} gokken${hints}. ${first_guess}${first_hit}${last_guess_msg} https://semantle.be`;
+}
+
+
+function getQueryParameter(name) {
+    const url = window.location.href
+    const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+    const results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2]);
 }
 
 let Semantle = (function() {
@@ -231,7 +284,11 @@ let Semantle = (function() {
         const url = "/model2/" + secret + "/" + word.replace(/\ /gi, "_");
         const response = await fetch(url);
         try {
-            return await response.json();
+            const result = await response.json();
+            if (result) {
+                cache[guess] = result;
+            }
+            return result;
         } catch (e) {
             return null;
         }
@@ -247,45 +304,176 @@ let Semantle = (function() {
         }
     }
 
+async function hint(guesses) {
+    function hintNumber(guesses) {
+        if (guesses.length === 0) {
+            return 1;
+        }
+        const nearest_top1k = guesses[0][2];
+        if (nearest_top1k === undefined) {
+            return 1;
+        }
+
+        if (nearest_top1k === 999) {
+            for (let i = 1; i < guesses.length; i++) {
+                if (guesses[i][2] !== 999 - i) {
+                    return 999 - i;
+                }
+            }
+            // user has guessed all of the top 1k except the actual word.
+            return -1;
+        }
+
+        return Math.floor((nearest_top1k + 1000) / 2);
+    }
+
+    const n = hintNumber(guesses);
+    if (n < 0) {
+        alert("No more hints are available.");
+    }
+    const url = "/nth_nearby/" + secret + "/" + n;
+    const response = await fetch(url);
+    try {
+        const hint_word = await response.json();
+        hints_used += 1;
+        doGuess(hint_word, true);
+    } catch (e) {
+        console.log(e);
+        alert("Fetching hint failed");
+    }
+}
+
+async function doGuess(guess, is_hint) {
+    if (secretVec === null) {
+        secretVec = (await getModel(secret)).vec;
+    }
+
+    const guessData = await getModel(guess);
+    if (!guessData) {
+        $('#error').textContent = `I don't know the word ${guess}.`;
+        return false;
+    }
+
+    let percentile = guessData.percentile;
+
+    const guessVec = guessData.vec;
+
+    let similarity = getCosSim(guessVec, secretVec) * 100.0;
+    if (!guessed.has(guess)) {
+        if (!gameOver) {
+            guessCount += 1;
+        }
+        guessed.add(guess);
+
+        const newEntry = [similarity, guess, percentile, guessCount];
+        guesses.push(newEntry);
+
+        if (handleStats) {
+            const stats = getStats();
+            if (!gameOver && !is_hint) {
+                stats['totalGuesses'] += 1;
+            }
+            storage.setItem('stats', JSON.stringify(stats));
+        }
+    }
+    guesses.sort(function(a, b){return b[0]-a[0]});
+
+    if (!gameOver) {
+        saveGame(-1, -1);
+    }
+
+    chrono_forward = 1;
+
+    latestGuess = guess;
+    updateGuesses();
+
+    firstGuess = false;
+    if (guess.toLowerCase() === secret && !gameOver) {
+        endGame(true, true);
+    }
+}
+
     async function init() {
-        secret = secretWords[puzzleNumber].toLowerCase();
+        secret = getSecretWord(today).toLowerCase();
+        storage = window.localStorage;
+        puzzleKey = puzzleNumber;
+
+        const urlSecret = getQueryParameter('word');
+        if (urlSecret) {
+            try {
+                const word = atob(urlSecret).replace(/[0-9]+/, '');
+                similarityStory = await getSimilarityStory(word);
+                if (similarityStory == null) {
+                    alert(`It looks like you clicked a custom puzzle link, but it was somehow broken.  I'll show you today's puzzle instead.`);
+                } else {
+                    secret = word;
+                    customMode = true;
+                    handleStats = false;
+                    // Use sessionStorage to avoid interfering with
+                    // the global game state
+                    storage = window.sessionStorage
+                    puzzleKey = urlSecret;
+                }
+            } catch (e) {
+                // user error -- just show regular semantle
+                console.log("ERR: " + e);
+                similarityStory = await getSimilarityStory(secret);
+            }
+        } else {
+            similarityStory = await getSimilarityStory(secret);
+        }
+
         const yesterday = secretWords[yesterdayPuzzleNumber].toLowerCase();
 
         $('#yesterday').innerHTML = `Het woord van gisteren was <b>"${yesterday}"</b>.`;
-        //$('#yesterday2').innerHTML = yesterday;
+        let pastWeek = [];
+        for (let i = 2; i < 9; i ++) {
+            pastWeek.push(`"${getSecretWord(today - i)}"`);
+        }
+        //$('#yesterday2').innerHTML = `"${yesterday}". The words before that were: ${pastWeek.join(", ")}`;
 
-        $('#lower').checked = storage.getItem("lower") == "true";
+        // explicitly use localStorage for this
+        $('#lower').checked = window.localStorage.getItem("lower") == "true";
 
         $('#lower').onchange = (e) => {
-            storage.setItem("lower", "" + $('#lower').checked);
+            window.localStorage.setItem("lower", "" + $('#lower').checked);
         };
 
         try {
             const yesterdayNearby = await getNearby(yesterday);
             const secretBase64 = btoa(unescape(encodeURIComponent(yesterday)));
-            $('#nearbyYesterday').innerHTML = `${yesterdayNearby.join(", ")}, in descending order of closensess. <a href="nearby_1k/${secretBase64}">More?</a>`;
+            $('#nearbyYesterday').innerHTML = `${yesterdayNearby.join(", ")}, in descending order of closeness. <a href="nearby_1k/${secretBase64}">More?</a>`;
         } catch (e) {
             //$('#nearbyYesterday').innerHTML = `Coming soon!`;
         }
         updateLocalTime();
 
         try {
-            similarityStory = await getSimilarityStory(secret);
-            $('#similarity-story').innerHTML = `
-Vandaag speel je puzzelnunmmer <b>${puzzleNumber}</b>. Het dichtstbijzijnde woord heeft een score van 
+            if (customMode) {
+                $('#similarity-story').innerHTML = `
+You're viewing a <b>custom puzzle</b>. Click <a href="/">here for today's official puzzle</a>. The nearest word has a similarity of
+<b>${(similarityStory.top * 100).toFixed(2)}</b>, the tenth-nearest has a similarity of
+${(similarityStory.top10 * 100).toFixed(2)} and the one thousandth nearest word has a
+similarity of ${(similarityStory.rest * 100).toFixed(2)}.
+`;
+
+            } else {
+                $('#similarity-story').innerHTML = `
+Vandaag speel je puzzelnunmmer <b>${puzzleNumber}</b>. Het dichtstbijzijnde woord heeft een score van
 <b>${(similarityStory.top * 100).toFixed(2)}</b><br />Het 10e dichtstbijzijnde woord heeft een score van
 ${(similarityStory.top10 * 100).toFixed(2)} en het 1000e een score van
 ${(similarityStory.rest * 100).toFixed(2)}.
 `;
+            }
         } catch {
             // we can live without this in the event that something is broken
         }
 
         const storagePuzzleNumber = storage.getItem("puzzleNumber");
-        if (storagePuzzleNumber != puzzleNumber) {
+        if (storagePuzzleNumber != puzzleKey) {
             storage.removeItem("guesses");
             storage.removeItem("winState");
-            storage.setItem("puzzleNumber", puzzleNumber);
+            storage.setItem("puzzleNumber", puzzleKey);
         }
 
         document.querySelectorAll(".dialog-close").forEach((el) => {
@@ -293,7 +481,7 @@ ${(similarityStory.rest * 100).toFixed(2)}.
             el.appendChild($("#x-icon").content.cloneNode(true));
         });
 
-        if (!storage.getItem("readRules")) {
+        if (!window.localStorage.getItem("readRules")) {
             openRules();
         }
 
@@ -313,8 +501,23 @@ ${(similarityStory.rest * 100).toFixed(2)}.
             });
         });
 
+        // accordion functionality taken from
+        // https://www.w3schools.com/howto/howto_js_accordion.asp
+        document.querySelectorAll(".accordion").forEach((el) => {
+          el.addEventListener("click", function() {
+            this.classList.toggle("active");
+
+            const panel = this.nextElementSibling;
+            if (panel.style.display === "block") {
+              panel.style.display = "none";
+            } else {
+              panel.style.display = "block";
+            }
+          });
+        });
+
         $("#dark-mode").addEventListener('click', function(event) {
-            storage.setItem("prefersDarkColorScheme", event.target.checked);
+            window.localStorage.setItem("prefersDarkColorScheme", event.target.checked);
             darkModeMql.onchange = null;
             darkMode = event.target.checked;
             toggleDarkMode(darkMode);
@@ -323,7 +526,7 @@ ${(similarityStory.rest * 100).toFixed(2)}.
 
         toggleDarkMode(darkMode);
 
-        if (storage.getItem("prefersDarkColorScheme") === null) {
+        if (window.localStorage.getItem("prefersDarkColorScheme") === null) {
             $("#dark-mode").checked = false;
             $("#dark-mode").indeterminate = true;
         }
@@ -336,11 +539,16 @@ ${(similarityStory.rest * 100).toFixed(2)}.
             }
         });
 
+        $('#hint-btn').addEventListener('click', async function(event) {
+            if (!gameOver) {
+                if (confirm("Ben je zeker dat je een hint wilt?")) {
+                    await hint(guesses);
+                }
+            }
+        });
+
         $('#form').addEventListener('submit', async function(event) {
             event.preventDefault();
-            if (secretVec === null) {
-                secretVec = (await getModel(secret)).vec;
-            }
             $('#guess').focus();
             $('#error').textContent = "";
             let guess = $('#guess').value.trim().replace("!", "").replace("*", "");
@@ -361,61 +569,19 @@ ${(similarityStory.rest * 100).toFixed(2)}.
             if (caps >= 2 && (caps / guesses.length) > 0.4 && !warnedCaps) {
                 warnedCaps = true;
                 $("#lower").checked = confirm("You're entering a lot of words with initial capital letters.  This is probably not what you want to do, and it's probably caused by your phone keyboard ignoring the autocapitalize setting.  \"Nice\" is a city. \"nice\" is an adjective.  Do you want me to downcase your guesses for you?");
-                storage.setItem("lower", "true");
+                window.localStorage.setItem("lower", "true");
             }
 
             $('#guess').value = "";
 
-            const guessData = await getModel(guess);
-            if (!guessData) {
-                $('#error').textContent = `${guess} is geen geldig woord.`;
-                return false;
-            }
+            await doGuess(guess, false);
 
-            let percentile = guessData.percentile;
-
-            const guessVec = guessData.vec;
-
-            cache[guess] = guessData;
-
-            let similarity = getCosSim(guessVec, secretVec) * 100.0;
-            if (!guessed.has(guess)) {
-                if (!gameOver) {
-                    guessCount += 1;
-                }
-                guessed.add(guess);
-
-                const newEntry = [similarity, guess, percentile, guessCount];
-                guesses.push(newEntry);
-
-                if (handleStats) {
-                    const stats = getStats();
-                    if (!gameOver) {
-                        stats['totalGuesses'] += 1;
-                    }
-                    storage.setItem('stats', JSON.stringify(stats));
-                }
-            }
-            guesses.sort(function(a, b){return b[0]-a[0]});
-
-            if (!gameOver) {
-                saveGame(-1, -1);
-            }
-
-            chrono_forward = 1;
-
-            latestGuess = guess;
-            updateGuesses();
-
-            firstGuess = false;
-            if (guess.toLowerCase() === secret && !gameOver) {
-                endGame(true, true);
-            }
             return false;
         });
 
         const winState = storage.getItem("winState");
         if (winState != null) {
+            hints_used = JSON.parse(storage.getItem("hints_used") || "0");
             guesses = JSON.parse(storage.getItem("guesses"));
             for (let guess of guesses) {
                 guessed.add(guess[1]);
@@ -431,7 +597,7 @@ ${(similarityStory.rest * 100).toFixed(2)}.
 
     function openRules() {
         document.body.classList.add('dialog-open', 'rules-open');
-        storage.setItem("readRules", true);
+        window.localStorage.setItem("readRules", true);
         $("#rules-close").focus();
     }
 
@@ -485,7 +651,7 @@ ${(similarityStory.rest * 100).toFixed(2)}.
     }
 
     function checkMedia() {
-        const storagePrefersDarkColorScheme = storage.getItem("prefersDarkColorScheme");
+        const storagePrefersDarkColorScheme = window.localStorage.getItem("prefersDarkColorScheme");
         if (storagePrefersDarkColorScheme === 'true' || storagePrefersDarkColorScheme === 'false') {
             darkMode = storagePrefersDarkColorScheme === 'true';
         } else {
@@ -503,10 +669,11 @@ ${(similarityStory.rest * 100).toFixed(2)}.
         // If we are in a tab still open from yesterday, we're done here.
         // Don't save anything because we may overwrite today's game!
         let savedPuzzleNumber = storage.getItem("puzzleNumber");
-        if (savedPuzzleNumber != puzzleNumber) { return }
+        if (savedPuzzleNumber != puzzleKey) { return }
 
         storage.setItem("winState", winState);
         storage.setItem("guesses", JSON.stringify(guesses));
+        storage.setItem("hints_used", JSON.stringify(hints_used));
     }
 
     function getStats() {
@@ -523,11 +690,13 @@ ${(similarityStory.rest * 100).toFixed(2)}.
                 'giveups' : 0,
                 'abandons' : 0,
                 'totalPlays' : 0,
+                'hints' : 0,
             };
             storage.setItem("stats", JSON.stringify(stats));
             return stats;
         } else {
             const stats = JSON.parse(oldStats);
+            stats['hints'] = stats['hints'] || 0;
             if (stats['lastPlay'] != puzzleNumber) {
                 const onStreak = (stats['lastPlay'] == puzzleNumber - 1);
                 if (onStreak) {
@@ -562,6 +731,7 @@ ${(similarityStory.rest * 100).toFixed(2)}.
                     stats['winStreak'] = 0;
                     stats['giveups'] += 1;
                 }
+                stats['hints'] += hints_used;
                 storage.setItem("stats", JSON.stringify(stats));
             }
         }
@@ -571,6 +741,10 @@ ${(similarityStory.rest * 100).toFixed(2)}.
         gameOver = true;
         const secretBase64 = btoa(unescape(encodeURIComponent(secret)));
         let response;
+        let share = '';
+        if (!customMode) {
+            share = '<a href="javascript:share();">Share</a> and play again tomorrow. ';
+        }
         if (won) {
             response = `<p><b>Gewonnen! Je vond het geheime woord in ${guesses.length} pogingen!  Het geheime woord is ${secret}</b>. <a href="javascript:share();"><br />Deel</a> and speel morgen opnieuw. Je kan alle dichtstbijzijnde woorden <a href="nearby_1k/${secretBase64}">hier</a> zien.</p>`
         } else {
@@ -590,6 +764,7 @@ Stats: <br/>
 <tr><th>Niet afgemaakt:</th><td>${stats['abandons']}</td></tr>
 <tr><th>Totaal aantal gokken over alle spelletjes:</th><td>${stats['totalGuesses']}</td></tr>
 <tr><th>Gemiddelde aantal gokken:</th><td>${(stats['totalGuesses'] / totalGames).toFixed(2)}</td></tr>
+<tr><th>Totaal aantal gebruikte hints:</th><td>${stats['hints']}</td></tr>
 </table>
 `;
         }
