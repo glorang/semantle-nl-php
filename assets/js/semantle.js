@@ -350,7 +350,7 @@ async function doGuess(guess, is_hint) {
 
     const guessData = await getModel(guess);
     if (!guessData) {
-        $('#error').textContent = `I don't know the word ${guess}.`;
+        $('#error').textContent = `${guess} is geen geldig woord.`;
         return false;
     }
 
