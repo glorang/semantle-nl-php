@@ -24,6 +24,15 @@ $result = $sql->execute();
     <script src="/assets/js/nearest1k.js"></script>
     <meta name="robots" content="noindex" />
     <title>Semantle: dichtstbijzijnde woorden</title>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RPQW537B2L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-RPQW537B2L');
+    </script>
   </head>
   <body>
     <div id="warning" style="display:none; ">
