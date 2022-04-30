@@ -2,7 +2,7 @@
     Copyright (c) 2022, David Turner <novalis@novalis.org>
     Copyright (c) 2022, Geert Lorang
 
-     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3.
+    This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3.
 
     This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
@@ -143,7 +143,7 @@ function guessRow(similarity, oldGuess, percentile, guessNumber, guess) {
     let progress = "";
     let cls = "";
     if (similarity >= similarityStory.rest * 100) {
-        percentileText = '<span class="weirdWord">????<span class="tooltiptext">Unusual word found!  This word is not in the list of &quot;normal&quot; words that we use for the top-1000 list, but it is still similar! (Is it maybe capitalized?)</span></span>';
+        percentileText = '<span class="weirdWord">????<span class="tooltiptext">Vreemd woord! Dit woord staat niet in de lijst van de &quot;normale&quot; woorden, maar het is wel gelijkaardig! Vermoedelijk is er een verschil in spaties of hoofdletters.</span></span>';
     }
     if (percentile) {
         if (percentile == 1000) {
@@ -180,7 +180,7 @@ function updateLocalTime() {
     const now = new Date();
     now.setUTCHours(24, 0, 0, 0);
 
-    const localtime = `or ${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")} jouw tijd`;
+    const localtime = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")} 's nachts`;
     $('#localtime').innerHTML = localtime;
     //$('#localtime2').innerHTML = localtime;
 }
@@ -329,7 +329,7 @@ async function hint(guesses) {
 
     const n = hintNumber(guesses);
     if (n < 0) {
-        alert("No more hints are available.");
+        alert("Geen hints meer beschikbaar.");
     }
     const url = "/nth_nearby/" + secret + "/" + n;
     const response = await fetch(url);
@@ -339,7 +339,7 @@ async function hint(guesses) {
         doGuess(hint_word, true);
     } catch (e) {
         console.log(e);
-        alert("Fetching hint failed");
+        alert("Kon geen hint ophalen.");
     }
 }
 
@@ -426,10 +426,10 @@ async function doGuess(guess, is_hint) {
         const yesterday = secretWords[yesterdayPuzzleNumber].toLowerCase();
 
         $('#yesterday').innerHTML = `Het woord van gisteren was <b>"${yesterday}"</b>.`;
-        let pastWeek = [];
-        for (let i = 2; i < 9; i ++) {
-            pastWeek.push(`"${getSecretWord(today - i)}"`);
-        }
+        //let pastWeek = [];
+        //for (let i = 2; i < 9; i ++) {
+        //    pastWeek.push(`"${getSecretWord(today - i)}"`);
+        //}
         //$('#yesterday2').innerHTML = `"${yesterday}". The words before that were: ${pastWeek.join(", ")}`;
 
         // explicitly use localStorage for this
@@ -439,32 +439,22 @@ async function doGuess(guess, is_hint) {
             window.localStorage.setItem("lower", "" + $('#lower').checked);
         };
 
-        try {
-            const yesterdayNearby = await getNearby(yesterday);
-            const secretBase64 = btoa(unescape(encodeURIComponent(yesterday)));
-            $('#nearbyYesterday').innerHTML = `${yesterdayNearby.join(", ")}, in descending order of closeness. <a href="nearby_1k/${secretBase64}">More?</a>`;
-        } catch (e) {
-            //$('#nearbyYesterday').innerHTML = `Coming soon!`;
-        }
+        //try {
+        //    const yesterdayNearby = await getNearby(yesterday);
+        //    const secretBase64 = btoa(unescape(encodeURIComponent(yesterday)));
+        //    $('#nearbyYesterday').innerHTML = `${yesterdayNearby.join(", ")}, in descending order of closeness. <a href="nearby_1k/${secretBase64}">More?</a>`;
+        //} catch (e) {
+        //    $('#nearbyYesterday').innerHTML = `Coming soon!`;
+        //}
         updateLocalTime();
 
         try {
-            if (customMode) {
-                $('#similarity-story').innerHTML = `
-You're viewing a <b>custom puzzle</b>. Click <a href="/">here for today's official puzzle</a>. The nearest word has a similarity of
-<b>${(similarityStory.top * 100).toFixed(2)}</b>, the tenth-nearest has a similarity of
-${(similarityStory.top10 * 100).toFixed(2)} and the one thousandth nearest word has a
-similarity of ${(similarityStory.rest * 100).toFixed(2)}.
-`;
-
-            } else {
                 $('#similarity-story').innerHTML = `
 Vandaag speel je puzzelnunmmer <b>${puzzleNumber}</b>. Het dichtstbijzijnde woord heeft een score van
 <b>${(similarityStory.top * 100).toFixed(2)}</b><br />Het 10e dichtstbijzijnde woord heeft een score van
-${(similarityStory.top10 * 100).toFixed(2)} en het 1000e een score van
-${(similarityStory.rest * 100).toFixed(2)}.
+<b>${(similarityStory.top10 * 100).toFixed(2)}</b> en het 1000e een score van
+<b>${(similarityStory.rest * 100).toFixed(2)}</b>.
 `;
-            }
         } catch {
             // we can live without this in the event that something is broken
         }
@@ -568,7 +558,8 @@ ${(similarityStory.rest * 100).toFixed(2)}.
             }
             if (caps >= 2 && (caps / guesses.length) > 0.4 && !warnedCaps) {
                 warnedCaps = true;
-                $("#lower").checked = confirm("You're entering a lot of words with initial capital letters.  This is probably not what you want to do, and it's probably caused by your phone keyboard ignoring the autocapitalize setting.  \"Nice\" is a city. \"nice\" is an adjective.  Do you want me to downcase your guesses for you?");
+                // always continue in lowercase
+                $("#lower").checked = true;
                 window.localStorage.setItem("lower", "true");
             }
 
@@ -741,10 +732,6 @@ ${(similarityStory.rest * 100).toFixed(2)}.
         gameOver = true;
         const secretBase64 = btoa(unescape(encodeURIComponent(secret)));
         let response;
-        let share = '';
-        if (!customMode) {
-            share = '<a href="javascript:share();">Share</a> and play again tomorrow. ';
-        }
         if (won) {
             response = `<p><b>Gewonnen! Je vond het geheime woord in ${guesses.length} pogingen!  Het geheime woord is ${secret}</b>. <a href="javascript:share();"><br />Deel</a> and speel morgen opnieuw. Je kan alle dichtstbijzijnde woorden <a href="nearby_1k/${secretBase64}">hier</a> zien.</p>`
         } else {
