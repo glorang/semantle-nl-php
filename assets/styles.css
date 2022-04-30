@@ -140,6 +140,17 @@ th {
     text-align: start;
 }
 
+th.top1k {
+    width: 100px;
+    padding-right: 0em;
+    text-align: center;
+}
+
+td.top1k {
+    width: 100px;
+    text-align: center;
+}
+
 th#chronoOrder, th#alphaOrder, th#similarityOrder, input:not([type=text]), button {
     cursor: pointer;
 }

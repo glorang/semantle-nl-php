@@ -22,6 +22,7 @@ $result = $sql->execute();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="/assets/js/secretWords.js?v=4"></script>
     <script src="/assets/js/nearest1k.js"></script>
+    <link rel="stylesheet" href="/assets/styles.css?v=5">
     <meta name="robots" content="noindex" />
     <title>Semantle: dichtstbijzijnde woorden</title>
 
@@ -36,7 +37,7 @@ $result = $sql->execute();
   </head>
   <body>
     <div id="warning" style="display:none; ">
-      <div style="border:thin solid black; background-color: #ffdddd">
+      <div style="border:thin solid black; background-color: #ffdddd; padding: 10px;">
         Opgepast: Deze pagina verraadt de opgave van vandaag. Klik op deze waarschuwing om de inhoud toch te zien.
       </div>
     </div>
@@ -46,14 +47,14 @@ $result = $sql->execute();
       <table >
         <tr>
           <th>Woord</th>
-          <th>Score</th>
-          <th>&permil;</th>
+          <th class="top1k">Score</th>
+          <th class="top1k">&permil;</th>
         </tr>
         <?php while($row = $result->fetchArray()) { ?>
         <tr>
           <td> <?php echo($row["neighbor"]); ?> </td>
-          <td style="width: 100px; text-align:center;"> <?php echo(sprintf("%0.2f", $row["similarity"] * 100)); ?> </td>
-          <td style="width: 100px; text-align:center;"> <?php echo(intval($row["percentile"])); ?> </td>
+          <td class="top1k"> <?php echo(sprintf("%0.2f", $row["similarity"] * 100)); ?> </td>
+          <td class="top1k"> <?php echo(intval($row["percentile"])); ?> </td>
         </tr>
         <?php } ?>
       </table>
