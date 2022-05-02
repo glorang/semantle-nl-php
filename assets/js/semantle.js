@@ -450,7 +450,7 @@ async function doGuess(guess, is_hint) {
 
         try {
                 $('#similarity-story').innerHTML = `
-Vandaag speel je puzzelnunmmer <b>${puzzleNumber}</b>. Het dichtstbijzijnde woord heeft een score van
+Vandaag speel je puzzelnummer <b>${puzzleNumber}</b>. Het dichtstbijzijnde woord heeft een score van
 <b>${(similarityStory.top * 100).toFixed(2)}</b><br />Het 10e dichtstbijzijnde woord heeft een score van
 <b>${(similarityStory.top10 * 100).toFixed(2)}</b> en het 1000e een score van
 <b>${(similarityStory.rest * 100).toFixed(2)}</b>.
