@@ -309,12 +309,12 @@ async function hint(guesses) {
         if (guesses.length === 0) {
             return 1;
         }
-        const nearest_top1k = guesses[0][2];
-        if (nearest_top1k === undefined) {
+        const top1k_guesses = guesses.filter(guess => guess[2]);
+
+        if (top1k_guesses.length === 0) {
             return 1;
         }
-
-        if (nearest_top1k === 999) {
+        function highest_unguessed(guesses) {
             for (let i = 1; i < guesses.length; i++) {
                 if (guesses[i][2] !== 999 - i) {
                     return 999 - i;
@@ -324,7 +324,20 @@ async function hint(guesses) {
             return -1;
         }
 
-        return Math.floor((nearest_top1k + 1000) / 2);
+        const nearest_top1k = top1k_guesses[0][2];
+        if (nearest_top1k === 999) {
+            return highest_unguessed(top1k_guesses);
+        }
+
+        let guess = Math.floor((nearest_top1k * 3 + 1000) / 4);
+        if (guess == nearest_top1k) {
+            guess += 1;
+            if (guess == 1000) {
+                return highest_unguessed(top1k_guesses);
+            }
+        }
+
+        return guess;
     }
 
     const n = hintNumber(guesses);
